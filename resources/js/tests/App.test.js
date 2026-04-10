@@ -96,7 +96,6 @@ describe('App', () => {
 
         await waitFor(() => {
             expect(window.axios.get).toHaveBeenCalledWith('/products');
-            expect(window.axios.get).toHaveBeenCalledWith('/users');
         });
 
         await fireEvent.click(screen.getByRole('button', { name: 'Products' }));
@@ -189,11 +188,12 @@ describe('App', () => {
 
         render(App);
 
+        await fireEvent.click(screen.getByRole('button', { name: 'Users' }));
+
         await waitFor(() => {
             expect(window.axios.get).toHaveBeenCalledWith('/users');
         });
 
-        await fireEvent.click(screen.getByRole('button', { name: 'Users' }));
         await fireEvent.update(screen.getByLabelText('Name'), 'Camila Torres');
         await fireEvent.update(screen.getByLabelText('Email'), 'camila@example.com');
         await fireEvent.update(screen.getByLabelText('Password'), 'password123');

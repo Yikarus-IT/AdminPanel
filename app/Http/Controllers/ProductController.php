@@ -6,13 +6,22 @@ use App\Http\Requests\StoreProductRequest;
 use App\Http\Requests\UpdateProductRequest;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ProductController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
+        $view = $request->string('view')->toString();
+
+        $query = Product::query();
+
+        if ($view === 'deleted') {
+            $query->onlyTrashed();
+        }
+
         return response()->json([
-            'data' => Product::query()
+            'data' => $query
                 ->latest()
                 ->get(),
         ]);
@@ -43,7 +52,7 @@ class ProductController extends Controller
         $product->delete();
 
         return response()->json([
-            'message' => 'Product deleted successfully.',
+            'message' => 'Product archived successfully.',
         ]);
     }
 }

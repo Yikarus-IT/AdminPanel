@@ -57,4 +57,46 @@ class ProductManagementTest extends TestCase
                 'status',
             ]);
     }
+
+    public function test_product_is_soft_deleted_and_hidden_from_index(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Archive Me',
+        ]);
+
+        $deleteResponse = $this->deleteJson("/products/{$product->id}");
+
+        $deleteResponse->assertOk();
+
+        $this->assertSoftDeleted('products', [
+            'id' => $product->id,
+        ]);
+
+        $indexResponse = $this->getJson('/products');
+
+        $indexResponse
+            ->assertOk()
+            ->assertJsonMissing([
+                'id' => $product->id,
+                'name' => 'Archive Me',
+            ]);
+    }
+
+    public function test_deleted_products_can_be_requested_explicitly(): void
+    {
+        $product = Product::factory()->create([
+            'name' => 'Archived Desk',
+        ]);
+
+        $product->delete();
+
+        $response = $this->getJson('/products?view=deleted');
+
+        $response
+            ->assertOk()
+            ->assertJsonFragment([
+                'id' => $product->id,
+                'name' => 'Archived Desk',
+            ]);
+    }
 }

@@ -29,10 +29,60 @@ const productsResponse = {
     },
 };
 
+const deletedProductsResponse = {
+    data: {
+        data: [
+            {
+                id: 9,
+                name: 'Archived Desk',
+                category: 'Furniture',
+                sku: 'ARC-001D',
+                price: '199.00',
+                stock: 0,
+                status: 'Urgent',
+                description: 'Archived product',
+            },
+        ],
+    },
+};
+
+const usersResponse = {
+    data: {
+        data: [
+            {
+                id: 1,
+                name: 'Luis Ponce',
+                email: 'luis@adminpanel.test',
+                created_at: '2026-04-01T12:00:00.000000Z',
+            },
+            {
+                id: 2,
+                name: 'Andrea Ruiz',
+                email: 'andrea@adminpanel.test',
+                created_at: '2026-04-01T12:00:00.000000Z',
+            },
+        ],
+    },
+};
+
 describe('App', () => {
     beforeEach(() => {
         window.axios = {
-            get: vi.fn().mockResolvedValue(productsResponse),
+            get: vi.fn((url) => {
+                if (url === '/products') {
+                    return Promise.resolve(productsResponse);
+                }
+
+                if (url === '/products?view=deleted') {
+                    return Promise.resolve(deletedProductsResponse);
+                }
+
+                if (url === '/users') {
+                    return Promise.resolve(usersResponse);
+                }
+
+                return Promise.reject(new Error(`Unexpected GET ${url}`));
+            }),
             post: vi.fn(),
             put: vi.fn(),
             delete: vi.fn(),
@@ -46,6 +96,7 @@ describe('App', () => {
 
         await waitFor(() => {
             expect(window.axios.get).toHaveBeenCalledWith('/products');
+            expect(window.axios.get).toHaveBeenCalledWith('/users');
         });
 
         await fireEvent.click(screen.getByRole('button', { name: 'Products' }));
@@ -101,5 +152,62 @@ describe('App', () => {
 
         expect(await screen.findByText('Product created successfully.')).toBeInTheDocument();
         expect(screen.getByText('Desk Shelf')).toBeInTheDocument();
+    });
+
+    it('toggles to deleted products and updates the count pill', async () => {
+        render(App);
+
+        await waitFor(() => {
+            expect(window.axios.get).toHaveBeenCalledWith('/products');
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Products' }));
+        await fireEvent.click(screen.getByRole('button', { name: 'View deleted' }));
+
+        await waitFor(() => {
+            expect(window.axios.get).toHaveBeenCalledWith('/products?view=deleted');
+        });
+
+        expect(await screen.findByRole('heading', { name: 'Review archived products' })).toBeInTheDocument();
+        expect(screen.getByText('Archived Desk')).toBeInTheDocument();
+        expect(screen.getByText('1 deleted')).toBeInTheDocument();
+        expect(screen.getAllByText('Archived')[0]).toBeInTheDocument();
+    });
+
+    it('loads users and lets the user create a team member', async () => {
+        window.axios.post.mockResolvedValue({
+            data: {
+                message: 'User created successfully.',
+                data: {
+                    id: 3,
+                    name: 'Camila Torres',
+                    email: 'camila@example.com',
+                    created_at: '2026-04-02T12:00:00.000000Z',
+                },
+            },
+        });
+
+        render(App);
+
+        await waitFor(() => {
+            expect(window.axios.get).toHaveBeenCalledWith('/users');
+        });
+
+        await fireEvent.click(screen.getByRole('button', { name: 'Users' }));
+        await fireEvent.update(screen.getByLabelText('Name'), 'Camila Torres');
+        await fireEvent.update(screen.getByLabelText('Email'), 'camila@example.com');
+        await fireEvent.update(screen.getByLabelText('Password'), 'password123');
+        await fireEvent.click(screen.getByRole('button', { name: 'Create user' }));
+
+        await waitFor(() => {
+            expect(window.axios.post).toHaveBeenCalledWith('/users', {
+                name: 'Camila Torres',
+                email: 'camila@example.com',
+                password: 'password123',
+            });
+        });
+
+        expect(await screen.findByText('User created successfully.')).toBeInTheDocument();
+        expect(screen.getByText('Camila Torres')).toBeInTheDocument();
     });
 });

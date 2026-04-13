@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Database\Seeder;
 
@@ -11,10 +12,14 @@ class ProductSeeder extends Seeder
     {
         Product::query()->delete();
 
+        $categories = Category::query()
+            ->get()
+            ->keyBy('name');
+
         Product::factory()->createMany([
             [
                 'name' => 'Starter Kit',
-                'category' => 'Bundles',
+                'category_id' => $categories['Bundles']->id,
                 'sku' => 'KIT-100A',
                 'price' => 129.00,
                 'stock' => 48,
@@ -23,7 +28,7 @@ class ProductSeeder extends Seeder
             ],
             [
                 'name' => 'Wireless Mouse',
-                'category' => 'Accessories',
+                'category_id' => $categories['Accessories']->id,
                 'sku' => 'ACC-220M',
                 'price' => 39.90,
                 'stock' => 12,
@@ -32,7 +37,7 @@ class ProductSeeder extends Seeder
             ],
             [
                 'name' => 'Standing Desk',
-                'category' => 'Furniture',
+                'category_id' => $categories['Furniture']->id,
                 'sku' => 'FUR-410D',
                 'price' => 499.00,
                 'stock' => 6,
@@ -41,7 +46,7 @@ class ProductSeeder extends Seeder
             ],
             [
                 'name' => 'Laptop Sleeve',
-                'category' => 'Accessories',
+                'category_id' => $categories['Accessories']->id,
                 'sku' => 'ACC-185S',
                 'price' => 34.50,
                 'stock' => 31,

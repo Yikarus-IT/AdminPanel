@@ -19,7 +19,7 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:120'],
-            'category' => ['required', 'string', 'max:80'],
+            'category_id' => ['required', 'integer', 'exists:categories,id'],
             'sku' => ['required', 'string', 'max:40', 'alpha_dash', 'unique:products,sku'],
             'price' => ['required', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],

@@ -3,15 +3,17 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { asCurrency } from './formatters';
 
 const products = ref([]);
+const categories = ref([]);
 const productView = ref('active');
 const isLoadingProducts = ref(false);
+const isLoadingCategories = ref(false);
 const isSaving = ref(false);
 const feedback = reactive({ type: '', message: '' });
 const errors = reactive({});
 const editingProductId = ref(null);
 const form = reactive({
     name: '',
-    category: '',
+    categoryId: '',
     sku: '',
     price: '',
     stock: '',
@@ -40,7 +42,7 @@ function resetErrors() {
 function resetForm() {
     editingProductId.value = null;
     form.name = '';
-    form.category = '';
+    form.categoryId = categories.value[0] ? String(categories.value[0].id) : '';
     form.sku = '';
     form.price = '';
     form.stock = '';
@@ -52,7 +54,7 @@ function resetForm() {
 function fillForm(product) {
     editingProductId.value = product.id;
     form.name = product.name;
-    form.category = product.category;
+    form.categoryId = String(product.category_id);
     form.sku = product.sku;
     form.price = product.price;
     form.stock = product.stock;
@@ -75,6 +77,23 @@ async function fetchProducts() {
     }
 }
 
+async function fetchCategories() {
+    isLoadingCategories.value = true;
+
+    try {
+        const response = await window.axios.get('/product-categories');
+        categories.value = response.data.data;
+
+        if (!categories.value.some((category) => String(category.id) === form.categoryId)) {
+            form.categoryId = categories.value[0] ? String(categories.value[0].id) : '';
+        }
+    } catch {
+        setFeedback('error', 'Unable to load product categories right now.');
+    } finally {
+        isLoadingCategories.value = false;
+    }
+}
+
 async function saveProduct() {
     isSaving.value = true;
     resetErrors();
@@ -82,7 +101,7 @@ async function saveProduct() {
 
     const payload = {
         name: form.name,
-        category: form.category,
+        category_id: Number(form.categoryId),
         sku: form.sku,
         price: form.price,
         stock: form.stock,
@@ -149,7 +168,9 @@ async function toggleProductView() {
     await fetchProducts();
 }
 
-onMounted(fetchProducts);
+onMounted(async () => {
+    await Promise.all([fetchProducts(), fetchCategories()]);
+});
 </script>
 
 <template>
@@ -277,8 +298,13 @@ onMounted(fetchProducts);
                 <div class="grid gap-4 sm:grid-cols-2">
                     <div>
                         <label class="text-sm font-medium text-slate-700" for="category">Category</label>
-                        <input id="category" v-model="form.category" class="admin-input mt-2" type="text">
-                        <p v-if="errors.category" class="mt-2 text-sm text-rose-600">{{ errors.category[0] }}</p>
+                        <select id="category" v-model="form.categoryId" class="admin-input mt-2" :disabled="isLoadingCategories || !categories.length">
+                            <option v-if="!categories.length" value="">
+                                {{ isLoadingCategories ? 'Loading categories...' : 'No categories available' }}
+                            </option>
+                            <option v-for="category in categories" :key="category.id" :value="String(category.id)">{{ category.name }}</option>
+                        </select>
+                        <p v-if="errors.category_id" class="mt-2 text-sm text-rose-600">{{ errors.category_id[0] }}</p>
                     </div>
 
                     <div>
@@ -320,7 +346,7 @@ onMounted(fetchProducts);
                     <button
                         class="flex-1 cursor-pointer rounded-full bg-slate-950 px-5 py-3 text-sm font-medium text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-400"
                         type="submit"
-                        :disabled="isSaving"
+                        :disabled="isSaving || isLoadingCategories || !categories.length"
                     >
                         {{ isSaving ? 'Saving...' : (isEditing ? 'Update product' : 'Create product') }}
                     </button>

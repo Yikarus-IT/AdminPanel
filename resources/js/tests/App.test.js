@@ -46,6 +46,16 @@ const deletedProductsResponse = {
     },
 };
 
+const categoriesResponse = {
+    data: {
+        data: [
+            { id: 1, name: 'Accessories' },
+            { id: 2, name: 'Bundles' },
+            { id: 3, name: 'Furniture' },
+        ],
+    },
+};
+
 const usersResponse = {
     data: {
         data: [
@@ -81,6 +91,10 @@ describe('App', () => {
                     return Promise.resolve(usersResponse);
                 }
 
+                if (url === '/product-categories') {
+                    return Promise.resolve(categoriesResponse);
+                }
+
                 return Promise.reject(new Error(`Unexpected GET ${url}`));
             }),
             post: vi.fn(),
@@ -101,6 +115,7 @@ describe('App', () => {
         await fireEvent.click(screen.getByRole('button', { name: 'Products' }));
 
         expect(await screen.findByRole('heading', { name: 'Manage your catalog' })).toBeInTheDocument();
+        expect(window.axios.get).toHaveBeenCalledWith('/product-categories');
         expect(screen.getByText('Starter Kit')).toBeInTheDocument();
         expect(screen.getByText('KIT-100A')).toBeInTheDocument();
     });
@@ -112,6 +127,7 @@ describe('App', () => {
                 data: {
                     id: 3,
                     name: 'Desk Shelf',
+                    category_id: 3,
                     category: 'Furniture',
                     sku: 'FUR-777S',
                     price: '89.99',
@@ -129,8 +145,11 @@ describe('App', () => {
         });
 
         await fireEvent.click(screen.getByRole('button', { name: 'Products' }));
+        await waitFor(() => {
+            expect(window.axios.get).toHaveBeenCalledWith('/product-categories');
+        });
         await fireEvent.update(screen.getByLabelText('Name'), 'Desk Shelf');
-        await fireEvent.update(screen.getByLabelText('Category'), 'Furniture');
+        await fireEvent.update(screen.getByLabelText('Category'), '3');
         await fireEvent.update(screen.getByLabelText('SKU'), 'FUR-777S');
         await fireEvent.update(screen.getByLabelText('Price'), '89.99');
         await fireEvent.update(screen.getByLabelText('Stock'), '14');
@@ -140,7 +159,7 @@ describe('App', () => {
         await waitFor(() => {
             expect(window.axios.post).toHaveBeenCalledWith('/products', {
                 name: 'Desk Shelf',
-                category: 'Furniture',
+                category_id: 3,
                 sku: 'FUR-777S',
                 price: 89.99,
                 stock: 14,

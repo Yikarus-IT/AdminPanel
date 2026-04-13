@@ -22,8 +22,10 @@ class ProductController extends Controller
 
         return response()->json([
             'data' => $query
+                ->with('category')
                 ->latest()
-                ->get(),
+                ->get()
+                ->map(fn (Product $product): array => $this->serializeProduct($product)),
         ]);
     }
 
@@ -33,7 +35,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Product created successfully.',
-            'data' => $product,
+            'data' => $this->serializeProduct($product->load('category')),
         ], 201);
     }
 
@@ -43,7 +45,7 @@ class ProductController extends Controller
 
         return response()->json([
             'message' => 'Product updated successfully.',
-            'data' => $product->fresh(),
+            'data' => $this->serializeProduct($product->fresh()->load('category')),
         ]);
     }
 
@@ -54,5 +56,16 @@ class ProductController extends Controller
         return response()->json([
             'message' => 'Product archived successfully.',
         ]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function serializeProduct(Product $product): array
+    {
+        return [
+            ...$product->attributesToArray(),
+            'category' => $product->category?->name,
+        ];
     }
 }

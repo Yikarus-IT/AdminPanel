@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -18,14 +19,29 @@ class ProductManagementTest extends TestCase
 
         $response
             ->assertOk()
-            ->assertJsonCount(2, 'data');
+            ->assertJsonCount(2, 'data')
+            ->assertJsonStructure([
+                'data' => [
+                    '*' => [
+                        'id',
+                        'name',
+                        'category_id',
+                        'category',
+                        'sku',
+                    ],
+                ],
+            ]);
     }
 
     public function test_product_can_be_created(): void
     {
+        $category = Category::factory()->create([
+            'name' => 'Furniture',
+        ]);
+
         $response = $this->postJson('/products', [
             'name' => 'Desk Shelf',
-            'category' => 'Furniture',
+            'category_id' => $category->id,
             'sku' => 'FUR-777S',
             'price' => 89.99,
             'stock' => 14,
@@ -35,10 +51,12 @@ class ProductManagementTest extends TestCase
 
         $response
             ->assertCreated()
-            ->assertJsonPath('data.name', 'Desk Shelf');
+            ->assertJsonPath('data.name', 'Desk Shelf')
+            ->assertJsonPath('data.category', 'Furniture');
 
         $this->assertDatabaseHas('products', [
             'sku' => 'FUR-777S',
+            'category_id' => $category->id,
         ]);
     }
 
@@ -50,12 +68,28 @@ class ProductManagementTest extends TestCase
             ->assertStatus(422)
             ->assertJsonValidationErrors([
                 'name',
-                'category',
+                'category_id',
                 'sku',
                 'price',
                 'stock',
                 'status',
             ]);
+    }
+
+    public function test_product_creation_requires_a_valid_category(): void
+    {
+        $response = $this->postJson('/products', [
+            'name' => 'Desk Shelf',
+            'category_id' => 999,
+            'sku' => 'FUR-777S',
+            'price' => 89.99,
+            'stock' => 14,
+            'status' => 'Healthy',
+        ]);
+
+        $response
+            ->assertStatus(422)
+            ->assertJsonValidationErrors(['category_id']);
     }
 
     public function test_product_is_soft_deleted_and_hidden_from_index(): void
@@ -98,5 +132,18 @@ class ProductManagementTest extends TestCase
                 'id' => $product->id,
                 'name' => 'Archived Desk',
             ]);
+    }
+
+    public function test_product_categories_endpoint_returns_sorted_categories(): void
+    {
+        Category::factory()->create(['name' => 'Furniture']);
+        Category::factory()->create(['name' => 'Accessories']);
+
+        $response = $this->getJson('/product-categories');
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('data.0.name', 'Accessories')
+            ->assertJsonPath('data.1.name', 'Furniture');
     }
 }
